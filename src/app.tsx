@@ -1,29 +1,116 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, RefreshCw, Type, Sparkles, Activity, ArrowUp, Code, Maximize, Sun, Moon, AlignLeft, AlignCenter, AlignRight, ArrowUpCircle, ArrowDownCircle, MinusCircle, Link as LinkIcon, Eye, Clock, MoveHorizontal, ZoomIn, Aperture, RotateCcw, Download } from 'lucide-react';
+import { Copy, Type, Sparkles, Activity, ArrowUp, Code, Maximize, Sun, Moon, AlignLeft, AlignCenter, AlignRight, ArrowUpCircle, MinusCircle, Link as LinkIcon, Eye, Clock, MoveHorizontal, ZoomIn, Aperture, RotateCcw, Download, Timer, RefreshCw, ArrowDownCircle, Shuffle, Bold, Italic } from 'lucide-react';
 
 export default function App() {
-  const [text, setText] = useState('Welcome to my website');
+  const [text, setText] = useState('Mix and match styles!');
   const [linkUrl, setLinkUrl] = useState('');
-  const [animation, setAnimation] = useState('typewriter');
+  
+  // CHANGED: animations is now an array to support mixing
+  const [animations, setAnimations] = useState<string[]>(['typewriter', 'neon']); 
+  
   const [fontSize, setFontSize] = useState(40);
   const [textColor, setTextColor] = useState('#ffffff');
   const [bgColor, setBgColor] = useState('#000000');
   const [isTransparent, setIsTransparent] = useState(false);
   const [allowWrap, setAllowWrap] = useState(false);
   const [fontFamily, setFontFamily] = useState('Inter');
+  
+  // NEW: Font Styling State
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+
   const [duration, setDuration] = useState(2);
   const [copied, setCopied] = useState(false);
   const [startOnView, setStartOnView] = useState(true);
   
+  // Countdown State
+  const [targetDate, setTargetDate] = useState('');
+  const [countdownString, setCountdownString] = useState('00d 00h 00m 00s');
+
   // Alignment State
   const [alignH, setAlignH] = useState<'left' | 'center' | 'right'>('center');
   const [alignV, setAlignV] = useState<'flex-start' | 'center' | 'flex-end'>('center');
 
-  // State for the preview stage background (Light/Dark mode for the canvas)
   const [stageMode, setStageMode] = useState<'dark' | 'light'>('dark');
-
-  // State specifically for JS-based typewriter preview
   const [previewTypedText, setPreviewTypedText] = useState('');
+
+  // Set default target date
+  useEffect(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    const localIso = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+    setTargetDate(localIso);
+  }, []);
+
+  // Randomize Function
+  const randomizeStyle = () => {
+    const fonts = ['Inter', 'Roboto', 'Open Sans', 'Montserrat', 'Oswald', 'Playfair Display', 'Merriweather', 'Courier Prime', 'Pacifico', 'Dancing Script', 'Press Start 2P'];
+    const colors = ['#ffffff', '#ff0055', '#0099ff', '#00ff99', '#ffaa00', '#aa00ff', '#ff00cc', '#ffff00'];
+    const animOptions = ['typewriter', 'fadeup', 'neon', 'gradient', 'bounce', 'slide', 'zoom', 'blur', 'spin'];
+    
+    // Random Font & Color
+    setFontFamily(fonts[Math.floor(Math.random() * fonts.length)]);
+    setTextColor(colors[Math.floor(Math.random() * colors.length)]);
+    setIsBold(Math.random() > 0.5);
+    setIsItalic(Math.random() > 0.8);
+    
+    // Random Animations (1 or 2 mixed)
+    const numAnims = Math.random() > 0.7 ? 2 : 1;
+    const newAnims: string[] = [];
+    
+    for (let i = 0; i < numAnims; i++) {
+        const randAnim = animOptions[Math.floor(Math.random() * animOptions.length)];
+        if (!newAnims.includes(randAnim)) {
+            newAnims.push(randAnim);
+        }
+    }
+    setAnimations(newAnims);
+  };
+
+  // Toggle Animation Logic
+  const toggleAnimation = (id: string) => {
+    setAnimations(prev => {
+      // Conflict Resolution
+      if (id === 'countdown') {
+         const clean = prev.filter(a => a !== 'typewriter' && a !== 'countdown');
+         return [...clean, id];
+      }
+      if (id === 'typewriter') {
+         const clean = prev.filter(a => a !== 'countdown' && a !== 'typewriter');
+         return [...clean, id];
+      }
+      
+      // Standard Toggle
+      if (prev.includes(id)) {
+        return prev.filter(a => a !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
+  // Countdown Logic
+  useEffect(() => {
+    if (!animations.includes('countdown')) return;
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const target = new Date(targetDate).getTime();
+      const distance = target - now;
+
+      if (distance < 0) {
+        setCountdownString(text);
+      } else {
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        setCountdownString(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [targetDate, animations, text]);
 
   // Helper to ensure URL is absolute
   const getSafeUrl = (url: string) => {
@@ -35,9 +122,9 @@ export default function App() {
     return `https://${cleanUrl}`;
   };
 
-  // Handle JS-based typewriter effect for the preview window
+  // JS-based typewriter effect
   useEffect(() => {
-    if (animation === 'typewriter' && allowWrap) {
+    if (animations.includes('typewriter') && allowWrap) {
       setPreviewTypedText('');
       let currentIndex = 0;
       const charDelay = (duration * 1000) / Math.max(1, text.length);
@@ -53,23 +140,29 @@ export default function App() {
 
       return () => clearInterval(intervalId);
     }
-  }, [text, animation, allowWrap, duration]);
+  }, [text, animations, allowWrap, duration]);
 
-  // Animation definitions for the preview
+  // Render Preview Content
   const getPreviewContent = () => {
+    const isCountdown = animations.includes('countdown');
+    const isTypewriter = animations.includes('typewriter');
+
     const baseStyle: any = {
       color: textColor,
       fontSize: `${fontSize}px`,
       fontFamily: fontFamily,
+      fontWeight: isBold ? 'bold' : 'normal',
+      fontStyle: isItalic ? 'italic' : 'normal',
       textAlign: alignH,
       lineHeight: '1.2',
       whiteSpace: allowWrap ? 'normal' : 'nowrap',
       wordWrap: allowWrap ? 'break-word' : 'normal',
       textDecoration: 'none',
       cursor: linkUrl ? 'pointer' : 'default',
+      animation: '', 
     };
 
-    // Helper to wrap content in 'a' tag if link exists, otherwise 'div'
+    // Wrapper
     const Wrapper = ({ children, style, className }: any) => {
         if (linkUrl) {
             return (
@@ -87,10 +180,60 @@ export default function App() {
         return <div style={style} className={className}>{children}</div>;
     };
 
-    if (animation === 'typewriter' && allowWrap) {
-        // Javascript-driven render for wrapped typewriter
+    // --- Build Composite Styles ---
+    const activeAnimationStrings: string[] = [];
+    const specificStyle: any = { ...baseStyle };
+
+    if (animations.includes('neon')) {
+        specificStyle.textShadow = `0 0 5px #fff, 0 0 10px #fff, 0 0 20px ${textColor}, 0 0 30px ${textColor}, 0 0 40px ${textColor}`;
+        activeAnimationStrings.push(`pulsate ${duration}s infinite alternate`);
+    }
+    if (animations.includes('gradient')) {
+        specificStyle.background = `linear-gradient(to right, ${textColor}, #ff00cc, #3333ff, ${textColor})`;
+        specificStyle.backgroundSize = '300% auto';
+        specificStyle.WebkitBackgroundClip = 'text';
+        specificStyle.WebkitTextFillColor = 'transparent';
+        activeAnimationStrings.push(`shine ${duration}s linear infinite`);
+    }
+
+    if (animations.includes('fadeup')) activeAnimationStrings.push(`fadeInUp ${duration}s ease-out forwards`);
+    if (animations.includes('bounce')) activeAnimationStrings.push(`bounceIn ${duration}s cubic-bezier(0.215, 0.610, 0.355, 1.000) both`);
+    if (animations.includes('slide')) activeAnimationStrings.push(`slideIn ${duration}s ease-out forwards`);
+    if (animations.includes('zoom')) activeAnimationStrings.push(`zoomIn ${duration}s ease-out forwards`);
+    if (animations.includes('blur')) activeAnimationStrings.push(`blurIn ${duration}s ease-out forwards`);
+    if (animations.includes('spin')) {
+        activeAnimationStrings.push(`spinIn ${duration}s ease-out forwards`);
+        specificStyle.transformStyle = 'preserve-3d';
+    }
+
+    // Typewriter CSS
+    if (isTypewriter && !allowWrap) {
+        specificStyle.display = 'inline-block';
+        specificStyle.overflow = 'hidden';
+        specificStyle.borderRight = `.15em solid ${textColor}`;
+        specificStyle.whiteSpace = 'nowrap';
+        specificStyle.margin = alignH === 'center' ? '0 auto' : (alignH === 'right' ? '0 0 0 auto' : '0');
+        specificStyle.letterSpacing = '0.1em';
+        specificStyle.maxWidth = '100%';
+        activeAnimationStrings.push(`typing ${duration}s steps(${Math.max(1, text.length)}, end)`);
+        activeAnimationStrings.push(`blink-caret-border .75s step-end infinite`);
+    }
+
+    if (activeAnimationStrings.length > 0) {
+        specificStyle.animation = activeAnimationStrings.join(', ');
+    }
+
+    // --- Content Rendering ---
+    
+    // Case A: Countdown
+    if (isCountdown) {
+        return <Wrapper style={{...specificStyle, fontVariantNumeric: 'tabular-nums'}}>{countdownString}</Wrapper>;
+    }
+
+    // Case B: Multiline Typewriter (JS Based)
+    if (isTypewriter && allowWrap) {
         return (
-            <Wrapper style={{...baseStyle, whiteSpace: 'pre-wrap', display: 'block' }}>
+            <Wrapper style={{...specificStyle, whiteSpace: 'pre-wrap', display: 'block' }}>
                 {previewTypedText}
                 <span style={{ 
                     display: 'inline-block', 
@@ -99,69 +242,20 @@ export default function App() {
                     backgroundColor: textColor,
                     verticalAlign: 'baseline',
                     marginLeft: '1px',
-                    animation: 'blink-caret-opacity 0.75s step-end infinite' // FIX: Uses opacity animation only
+                    animation: 'blink-caret-opacity 0.75s step-end infinite'
                 }}></span>
             </Wrapper>
         );
     }
 
-    let specificStyle: any = { ...baseStyle };
-
-    switch (animation) {
-      case 'typewriter':
-        specificStyle = {
-          ...baseStyle,
-          display: 'inline-block',
-          overflow: 'hidden',
-          borderRight: `.15em solid ${textColor}`,
-          whiteSpace: 'nowrap',
-          margin: alignH === 'center' ? '0 auto' : (alignH === 'right' ? '0 0 0 auto' : '0'),
-          letterSpacing: '0.1em',
-          animation: `typing ${duration}s steps(${Math.max(1, text.length)}, end), blink-caret-border .75s step-end infinite`, // FIX: Uses border animation only
-          maxWidth: '100%',
-        };
-        break;
-      case 'fadeup':
-        specificStyle.animation = `fadeInUp ${duration}s ease-out forwards`;
-        break;
-      case 'neon':
-        specificStyle.textShadow = `0 0 5px #fff, 0 0 10px #fff, 0 0 20px ${textColor}, 0 0 30px ${textColor}, 0 0 40px ${textColor}`;
-        specificStyle.animation = `pulsate ${duration}s infinite alternate`;
-        break;
-      case 'gradient':
-        specificStyle.background = `linear-gradient(to right, ${textColor}, #ff00cc, #3333ff, ${textColor})`;
-        specificStyle.backgroundSize = '300% auto';
-        specificStyle.WebkitBackgroundClip = 'text';
-        specificStyle.WebkitTextFillColor = 'transparent';
-        specificStyle.animation = `shine ${duration}s linear infinite`;
-        break;
-      case 'bounce':
-        specificStyle.animation = `bounceIn ${duration}s cubic-bezier(0.215, 0.610, 0.355, 1.000) both`;
-        break;
-      case 'slide':
-        specificStyle.animation = `slideIn ${duration}s ease-out forwards`;
-        break;
-      case 'zoom':
-        specificStyle.animation = `zoomIn ${duration}s ease-out forwards`;
-        break;
-      case 'blur':
-        specificStyle.animation = `blurIn ${duration}s ease-out forwards`;
-        break;
-      case 'spin':
-        specificStyle.animation = `spinIn ${duration}s ease-out forwards`;
-        specificStyle.transformStyle = 'preserve-3d';
-        break;
-    }
-
     return <Wrapper style={specificStyle}>{text}</Wrapper>;
   };
 
-  // CSS Keyframes for the Preview (FIXED: Separated opacity and border animations)
+  // Shared Keyframes
   const keyframesStyle = `
     @keyframes typing { from { width: 0 } to { width: 100% } }
     @keyframes blink-caret-border { from, to { border-color: transparent; } 50% { border-color: ${textColor}; } }
     @keyframes blink-caret-opacity { from, to { opacity: 0; } 50% { opacity: 1; } }
-    
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulsate { 100% { text-shadow: 0 0 4px #fff, 0 0 11px #fff, 0 0 19px #fff, 0 0 40px ${textColor}, 0 0 80px ${textColor}, 0 0 90px ${textColor}, 0 0 100px ${textColor}, 0 0 150px ${textColor}; } 0% { text-shadow: 0 0 2px #fff, 0 0 4px #fff, 0 0 6px #fff, 0 0 10px ${textColor}, 0 0 45px ${textColor}, 0 0 55px ${textColor}, 0 0 70px ${textColor}, 0 0 80px ${textColor}; } }
     @keyframes shine { to { background-position: 200% center; } }
@@ -172,8 +266,11 @@ export default function App() {
     @keyframes spinIn { from { opacity: 0; transform: rotate3d(0, 1, 0, 90deg); } to { opacity: 1; transform: rotate3d(0, 1, 0, 0deg); } }
   `;
 
-  // Generate the HTML code for the user
+  // --- HTML GENERATOR ---
   const generateCode = () => {
+    const isCountdown = animations.includes('countdown');
+    const isTypewriter = animations.includes('typewriter');
+    
     let css = '';
     let htmlContent = '';
     let script = '';
@@ -185,45 +282,142 @@ export default function App() {
     const hrefAttr = linkUrl ? ` href="${safeUrl}" target="_blank" rel="noopener noreferrer"` : '';
     const cursorStyle = linkUrl ? 'cursor: pointer;' : '';
     
-    // Logic for Start on View
-    const playState = startOnView ? 'animation-play-state: paused;' : '';
+    // --- Compose CSS for Export ---
+    const activeCSSAnimations: string[] = [];
+    let specificCssProps = '';
+
+    // Add font weights to CSS
+    specificCssProps += `font-weight: ${isBold ? 'bold' : 'normal'}; `;
+    specificCssProps += `font-style: ${isItalic ? 'italic' : 'normal'}; `;
+
+    if (animations.includes('neon')) {
+        specificCssProps += `text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px ${textColor}, 0 0 30px ${textColor}, 0 0 40px ${textColor};`;
+        activeCSSAnimations.push(`pulsate ${duration}s infinite alternate`);
+    }
+    if (animations.includes('gradient')) {
+        specificCssProps += `
+            background: linear-gradient(to right, ${textColor}, #ff00cc, #3333ff, ${textColor});
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        `;
+        activeCSSAnimations.push(`shine ${duration}s linear infinite`);
+    }
     
-    // Observer script for Viewport detection
+    if (animations.includes('fadeup')) activeCSSAnimations.push(`fadeInUp ${duration}s ease-out forwards`);
+    if (animations.includes('bounce')) activeCSSAnimations.push(`bounceIn ${duration}s cubic-bezier(0.215, 0.610, 0.355, 1.000) both`);
+    if (animations.includes('slide')) activeCSSAnimations.push(`slideIn ${duration}s ease-out forwards`);
+    if (animations.includes('zoom')) activeCSSAnimations.push(`zoomIn ${duration}s ease-out forwards`);
+    if (animations.includes('blur')) activeCSSAnimations.push(`blurIn ${duration}s ease-out forwards`);
+    if (animations.includes('spin')) {
+        activeCSSAnimations.push(`spinIn ${duration}s ease-out forwards`);
+        specificCssProps += `transform-style: preserve-3d;`;
+    }
+
+    const commonCss = `
+      body { margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: ${alignV}; align-items: stretch; min-height: 100vh; background-color: ${finalBgColor}; font-family: '${fontFamily}', sans-serif; overflow: hidden; box-sizing: border-box; }
+      .container { width: 100%; text-align: ${alignH}; }
+      .text { font-size: ${fontSize}px; color: ${textColor}; margin: 0; line-height: 1.2; white-space: ${allowWrap ? 'pre-wrap' : 'nowrap'}; word-wrap: ${allowWrap ? 'break-word' : 'normal'}; text-decoration: none; ${cursorStyle} ${specificCssProps} }
+    `;
+
+    // Observer for Scroll
     const observerScript = `
     <script>
       document.addEventListener("DOMContentLoaded", function() {
         const target = document.querySelector('.container');
         const text = document.querySelector('.text');
         
+        function resetAnimation() {
+            if (text) {
+                text.style.animation = 'none';
+                text.offsetHeight; 
+                text.style.animation = null; 
+            }
+        }
+
         const observer = new IntersectionObserver((entries) => {
           entries.forEach(entry => {
             if (entry.isIntersecting) {
-              ${allowWrap && animation === 'typewriter' 
-                ? 'startTypewriter();' // JS animation trigger
-                : `if(text) text.style.animationPlayState = 'running';` // CSS animation trigger
+              ${allowWrap && isTypewriter 
+                ? 'startTypewriter();' 
+                : (isCountdown ? 'startCountdown();' : `if(text) text.style.animationPlayState = 'running';`)
               }
-              observer.disconnect();
+            } else {
+              ${allowWrap && isTypewriter 
+                ? 'resetTypewriter();' 
+                : (isCountdown ? 'resetCountdown();' : `resetAnimation();`)
+              }
             }
           });
-        });
+        }, { threshold: 0.1 });
         
         if(target) observer.observe(target);
         
-        ${!startOnView && allowWrap && animation === 'typewriter' ? 'setTimeout(startTypewriter, 500);' : ''}
+        ${!startOnView && allowWrap && isTypewriter ? 'setTimeout(startTypewriter, 500);' : ''}
+        ${!startOnView && isCountdown ? 'startCountdown();' : ''}
       });
     </script>`;
 
-    const commonCss = `
-      body { margin: 0; padding: 20px; display: flex; flex-direction: column; justify-content: ${alignV}; align-items: stretch; min-height: 100vh; background-color: ${finalBgColor}; font-family: '${fontFamily}', sans-serif; overflow: hidden; box-sizing: border-box; }
-      .container { width: 100%; text-align: ${alignH}; }
-      .text { font-size: ${fontSize}px; color: ${textColor}; margin: 0; line-height: 1.2; white-space: ${allowWrap ? 'pre-wrap' : 'nowrap'}; word-wrap: ${allowWrap ? 'break-word' : 'normal'}; text-decoration: none; ${cursorStyle} }
-    `;
+    // --- Generate HTML based on Mode ---
 
-    if (animation === 'typewriter') {
+    if (isCountdown) {
+         htmlContent = `<div class="container"><${tagJs} class="text" id="countdown"${hrefAttr}>00d 00h 00m 00s</${tagJs}></div>`;
+         
+         const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
+         
+         css = `
+            ${commonCss}
+            .text { font-variant-numeric: tabular-nums; ${animString} }
+         `;
+         script = `
+         <script>
+            let countdownInterval;
+
+            function startCountdown() {
+                if(countdownInterval) clearInterval(countdownInterval);
+                const countDownDate = new Date("${targetDate}").getTime();
+                const finishedText = "${text.replace(/"/g, '\\"')}";
+                const el = document.getElementById("countdown");
+                
+                if(el) el.style.animationPlayState = 'running';
+
+                countdownInterval = setInterval(function() {
+                    const now = new Date().getTime();
+                    const distance = countDownDate - now;
+
+                    if (distance < 0) {
+                        clearInterval(countdownInterval);
+                        el.innerHTML = finishedText;
+                        return;
+                    }
+
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    el.innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+                }, 1000);
+            }
+            function resetCountdown() {
+                if(countdownInterval) clearInterval(countdownInterval);
+                const el = document.getElementById("countdown");
+                if(el) {
+                    el.style.animation = 'none';
+                    el.offsetHeight; 
+                    el.style.animation = null;
+                }
+            }
+         </script>
+         ${startOnView ? observerScript : '<script>startCountdown();</script>'}
+         `;
+    } else if (isTypewriter) {
         if (allowWrap) {
-            // Multiline Typewriter (JS Based)
+            // Multiline JS Typewriter
             const charDelay = (duration * 1000) / Math.max(1, text.length);
             const safeText = text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+            
+            const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
 
             htmlContent = `
             <div class="container">
@@ -232,7 +426,7 @@ export default function App() {
 
             css = `
                 ${commonCss}
-                .text { display: inline-block; text-align: ${alignH}; }
+                .text { display: inline-block; text-align: ${alignH}; ${animString} }
                 #cursor {
                     display: inline-block;
                     width: 0.15em;
@@ -249,24 +443,39 @@ export default function App() {
                 <script>
                     const text = "${safeText}";
                     const container = document.getElementById('typewriter-text');
-                    const cursor = document.getElementById('cursor');
+                    let cursor = document.getElementById('cursor');
                     let i = 0;
+                    let typeTimer;
                     
                     function startTypewriter() {
+                        if(container) container.style.animationPlayState = 'running';
                         if (i < text.length) {
                             const char = text.charAt(i);
                             const span = document.createElement('span');
                             span.textContent = char;
                             container.insertBefore(span, cursor);
                             i++;
-                            setTimeout(startTypewriter, ${charDelay});
+                            typeTimer = setTimeout(startTypewriter, ${charDelay});
                         }
+                    }
+                    function resetTypewriter() {
+                        clearTimeout(typeTimer);
+                        i = 0;
+                        container.innerHTML = '<span id="cursor"></span>';
+                        cursor = document.getElementById('cursor');
+                        container.style.animation = 'none';
+                        container.offsetHeight; 
+                        container.style.animation = null;
                     }
                 </script>
                 ${startOnView ? observerScript : `<script>setTimeout(startTypewriter, 500);</script>`}
             `;
         } else {
-            // Single line Typewriter (CSS Based)
+            // Single line CSS Typewriter
+            activeCSSAnimations.push(`typing ${duration}s steps(${text.length}, end)`);
+            activeCSSAnimations.push(`blink-caret .75s step-end infinite`);
+            const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
+            
             htmlContent = `<div class="container"><${tag} class="text"${hrefAttr}>${text}</${tag}></div>`;
             const marginLogic = alignH === 'center' ? '0 auto' : (alignH === 'right' ? '0 0 0 auto' : '0');
             css = `
@@ -277,8 +486,7 @@ export default function App() {
                 border-right: .15em solid ${textColor};
                 margin: ${marginLogic};
                 letter-spacing: 0.1em;
-                animation: typing ${duration}s steps(${text.length}, end), blink-caret .75s step-end infinite;
-                ${playState}
+                ${animString}
                 max-width: 100%;
                 }
                 @keyframes typing { from { width: 0 } to { width: 100% } }
@@ -289,52 +497,9 @@ export default function App() {
     } else {
       // Standard animations
       htmlContent = `<div class="container"><${tag} class="text"${hrefAttr}>${text}</${tag}></div>`;
+      const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
       
-      let specificCss = '';
-      let specificKeyframes = '';
-
-      if (animation === 'fadeup') {
-        specificCss = `.text { opacity: 0; animation: fadeInUp ${duration}s ease-out forwards; ${playState} }`;
-        specificKeyframes = `@keyframes fadeInUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }`;
-      } else if (animation === 'neon') {
-        specificCss = `
-          .text {
-            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px ${textColor}, 0 0 30px ${textColor}, 0 0 40px ${textColor};
-            animation: pulsate ${duration}s infinite alternate;
-            ${playState}
-          }
-        `;
-        specificKeyframes = `@keyframes pulsate { 100% { text-shadow: 0 0 4px #fff, 0 0 11px #fff, 0 0 19px #fff, 0 0 40px ${textColor}, 0 0 80px ${textColor}, 0 0 90px ${textColor}, 0 0 100px ${textColor}, 0 0 150px ${textColor}; } 0% { text-shadow: 0 0 2px #fff, 0 0 4px #fff, 0 0 6px #fff, 0 0 10px ${textColor}, 0 0 45px ${textColor}, 0 0 55px ${textColor}, 0 0 70px ${textColor}, 0 0 80px ${textColor}; } }`;
-      } else if (animation === 'gradient') {
-        specificCss = `
-          .text {
-            background: linear-gradient(to right, ${textColor}, #ff00cc, #3333ff, ${textColor});
-            background-size: 200% auto;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: shine ${duration}s linear infinite;
-            ${playState}
-          }
-        `;
-        specificKeyframes = `@keyframes shine { to { background-position: 200% center; } }`;
-      } else if (animation === 'bounce') {
-        specificCss = `.text { opacity: 0; animation: bounceIn ${duration}s cubic-bezier(0.215, 0.610, 0.355, 1.000) both; ${playState} }`;
-        specificKeyframes = `@keyframes bounceIn { 0% { opacity: 0; transform: scale3d(.3, .3, .3); } 20% { transform: scale3d(1.1, 1.1, 1.1); } 40% { transform: scale3d(.9, .9, .9); } 60% { opacity: 1; transform: scale3d(1.03, 1.03, 1.03); } 80% { transform: scale3d(.97, .97, .97); } 100% { opacity: 1; transform: scale3d(1, 1, 1); } }`;
-      } else if (animation === 'slide') {
-        specificCss = `.text { opacity: 0; animation: slideIn ${duration}s ease-out forwards; ${playState} }`;
-        specificKeyframes = `@keyframes slideIn { from { transform: translateX(-100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`;
-      } else if (animation === 'zoom') {
-        specificCss = `.text { opacity: 0; animation: zoomIn ${duration}s ease-out forwards; ${playState} }`;
-        specificKeyframes = `@keyframes zoomIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }`;
-      } else if (animation === 'blur') {
-         specificCss = `.text { opacity: 0; animation: blurIn ${duration}s ease-out forwards; ${playState} }`;
-         specificKeyframes = `@keyframes blurIn { from { opacity: 0; filter: blur(20px); } to { opacity: 1; filter: blur(0); } }`;
-      } else if (animation === 'spin') {
-         specificCss = `.text { opacity: 0; animation: spinIn ${duration}s ease-out forwards; transform-style: preserve-3d; ${playState} }`;
-         specificKeyframes = `@keyframes spinIn { from { opacity: 0; transform: rotate3d(0, 1, 0, 90deg); } to { opacity: 1; transform: rotate3d(0, 1, 0, 0deg); } }`;
-      }
-
-      css = `${commonCss} ${specificCss} ${specificKeyframes}`;
+      css = `${commonCss} .text { ${animString} }`;
       script = startOnView ? observerScript : '';
     }
 
@@ -394,25 +559,51 @@ ${script}
 
       {/* Sidebar Controls */}
       <div className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full overflow-y-auto z-20 shadow-xl shrink-0">
-        <div className="p-6 border-b border-slate-100">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-indigo-600" />
-            Text Animator
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">Create embeddable animations for Google Sites</p>
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-600" />
+                Text Animator
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">Create embeddable animations for Google Sites</p>
+          </div>
+          <button 
+            onClick={randomizeStyle}
+            className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors"
+            title="Randomize Style"
+          >
+            <Shuffle className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="p-6 space-y-6 flex-1">
           {/* Text Input */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Content</label>
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                {animations.includes('countdown') ? 'Message when Finished' : 'Content'}
+            </label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-y min-h-[80px]"
-              placeholder="Enter your text..."
+              placeholder={animations.includes('countdown') ? "e.g. We are Live!" : "Enter your text..."}
             />
           </div>
+
+          {/* Countdown Date Picker */}
+          {animations.includes('countdown') && (
+            <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-indigo-500 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Target Date & Time
+                </label>
+                <input 
+                    type="datetime-local"
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-indigo-200 rounded-lg bg-indigo-50 text-indigo-900 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                />
+            </div>
+          )}
           
            {/* Hyperlink Input */}
            <div className="space-y-2">
@@ -431,7 +622,9 @@ ${script}
 
           {/* Animation Type */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Animation Style</label>
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Animation Mix <span className="text-[10px] text-indigo-500 font-normal ml-1">(Click multiple!)</span>
+            </label>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: 'typewriter', name: 'Typewriter', icon: Type },
@@ -443,20 +636,24 @@ ${script}
                 { id: 'zoom', name: 'Zoom In', icon: ZoomIn },
                 { id: 'blur', name: 'Focus', icon: Aperture },
                 { id: 'spin', name: '3D Spin', icon: RotateCcw },
-              ].map((anim) => (
-                <button
-                  key={anim.id}
-                  onClick={() => setAnimation(anim.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all ${
-                    animation === anim.id
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
-                      : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-600'
-                  }`}
-                >
-                  <anim.icon className="w-4 h-4" />
-                  {anim.name}
-                </button>
-              ))}
+                { id: 'countdown', name: 'Countdown', icon: Timer },
+              ].map((anim) => {
+                const isActive = animations.includes(anim.id);
+                return (
+                    <button
+                    key={anim.id}
+                    onClick={() => toggleAnimation(anim.id)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all border ${
+                        isActive
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200'
+                        : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                    >
+                    <anim.icon className="w-4 h-4" />
+                    {anim.name}
+                    </button>
+                )
+              })}
             </div>
           </div>
 
@@ -491,6 +688,46 @@ ${script}
                 onChange={(e) => setDuration(Math.max(0.1, Number(e.target.value)))}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
               />
+            </div>
+
+            {/* Font Family Controls (Updated with Bold/Italic) */}
+             <div className="space-y-2 pt-2">
+                <label className="text-xs text-slate-500 mb-1 block">Font Family</label>
+                <div className="flex gap-2">
+                    <select 
+                        value={fontFamily}
+                        onChange={(e) => setFontFamily(e.target.value)}
+                        className="w-full p-2 text-sm border border-slate-200 rounded bg-white"
+                    >
+                        <option value="Inter">Inter (Modern)</option>
+                        <option value="Roboto">Roboto (Clean)</option>
+                        <option value="Open Sans">Open Sans (Neutral)</option>
+                        <option value="Montserrat">Montserrat (Geometric)</option>
+                        <option value="Oswald">Oswald (Bold/Condensed)</option>
+                        <option value="Playfair Display">Playfair Display (Serif)</option>
+                        <option value="Merriweather">Merriweather (Classic Serif)</option>
+                        <option value="Courier Prime">Courier Prime (Mono)</option>
+                        <option value="Pacifico">Pacifico (Handwriting)</option>
+                        <option value="Dancing Script">Dancing Script (Cursive)</option>
+                        <option value="Press Start 2P">Press Start 2P (Retro/Pixel)</option>
+                    </select>
+                    
+                    <button 
+                        onClick={() => setIsBold(!isBold)}
+                        className={`p-2 rounded border transition-all ${isBold ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        title="Toggle Bold"
+                    >
+                        <Bold className="w-4 h-4" />
+                    </button>
+                    
+                    <button 
+                        onClick={() => setIsItalic(!isItalic)}
+                        className={`p-2 rounded border transition-all ${isItalic ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        title="Toggle Italic"
+                    >
+                        <Italic className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             {/* Alignment Controls */}
@@ -588,27 +825,6 @@ ${script}
                 </div>
               </div>
             </div>
-
-             <div className="space-y-2 pt-2">
-                <label className="text-xs text-slate-500 mb-1 block">Font Family</label>
-                <select 
-                    value={fontFamily}
-                    onChange={(e) => setFontFamily(e.target.value)}
-                    className="w-full p-2 text-sm border border-slate-200 rounded bg-white"
-                >
-                    <option value="Inter">Inter (Modern)</option>
-                    <option value="Roboto">Roboto (Clean)</option>
-                    <option value="Open Sans">Open Sans (Neutral)</option>
-                    <option value="Montserrat">Montserrat (Geometric)</option>
-                    <option value="Oswald">Oswald (Bold/Condensed)</option>
-                    <option value="Playfair Display">Playfair Display (Serif)</option>
-                    <option value="Merriweather">Merriweather (Classic Serif)</option>
-                    <option value="Courier Prime">Courier Prime (Mono)</option>
-                    <option value="Pacifico">Pacifico (Handwriting)</option>
-                    <option value="Dancing Script">Dancing Script (Cursive)</option>
-                    <option value="Press Start 2P">Press Start 2P (Retro/Pixel)</option>
-                </select>
-            </div>
           </div>
         </div>
 
@@ -681,7 +897,7 @@ ${script}
             >
                  <div 
                     // Key prop forces a re-render when text/settings change, restarting the animation
-                    key={`${animation}-${text}-${duration}-${fontSize}-${fontFamily}-${allowWrap}-${linkUrl}`}
+                    key={`${animations.join('-')}-${text}-${duration}-${fontSize}-${fontFamily}-${allowWrap}-${linkUrl}-${isBold}-${isItalic}`}
                     style={{ width: '100%', textAlign: alignH }}
                  >
                     {getPreviewContent()}
