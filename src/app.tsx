@@ -67,25 +67,28 @@ export default function App() {
     setAnimations(newAnims);
   };
 
-  // Toggle Animation Logic
+  // Toggle Animation Logic (Fixed for proper deselection)
   const toggleAnimation = (id: string) => {
     setAnimations(prev => {
-      // Conflict Resolution
+      // 1. If currently selected, remove it (Toggle OFF)
+      if (prev.includes(id)) {
+        return prev.filter(a => a !== id);
+      }
+
+      // 2. If selecting (Toggle ON), handle conflicts
       if (id === 'countdown') {
-         const clean = prev.filter(a => a !== 'typewriter' && a !== 'countdown');
+         // If picking countdown, ensure typewriter is removed
+         const clean = prev.filter(a => a !== 'typewriter');
          return [...clean, id];
       }
       if (id === 'typewriter') {
-         const clean = prev.filter(a => a !== 'countdown' && a !== 'typewriter');
+         // If picking typewriter, ensure countdown is removed
+         const clean = prev.filter(a => a !== 'countdown');
          return [...clean, id];
       }
       
-      // Standard Toggle
-      if (prev.includes(id)) {
-        return prev.filter(a => a !== id);
-      } else {
-        return [...prev, id];
-      }
+      // 3. Standard selection for non-conflicting types
+      return [...prev, id];
     });
   };
 
@@ -824,6 +827,27 @@ ${script}
                     </div>
                 </div>
               </div>
+            </div>
+
+             <div className="space-y-2 pt-2">
+                <label className="text-xs text-slate-500 mb-1 block">Font Family</label>
+                <select 
+                    value={fontFamily}
+                    onChange={(e) => setFontFamily(e.target.value)}
+                    className="w-full p-2 text-sm border border-slate-200 rounded bg-white"
+                >
+                    <option value="Inter">Inter (Modern)</option>
+                    <option value="Roboto">Roboto (Clean)</option>
+                    <option value="Open Sans">Open Sans (Neutral)</option>
+                    <option value="Montserrat">Montserrat (Geometric)</option>
+                    <option value="Oswald">Oswald (Bold/Condensed)</option>
+                    <option value="Playfair Display">Playfair Display (Serif)</option>
+                    <option value="Merriweather">Merriweather (Classic Serif)</option>
+                    <option value="Courier Prime">Courier Prime (Mono)</option>
+                    <option value="Pacifico">Pacifico (Handwriting)</option>
+                    <option value="Dancing Script">Dancing Script (Cursive)</option>
+                    <option value="Press Start 2P">Press Start 2P (Retro/Pixel)</option>
+                </select>
             </div>
           </div>
         </div>
