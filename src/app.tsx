@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Copy, RefreshCw, Type, Sparkles, Activity, ArrowUp, Code, Maximize, Sun, Moon, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUpCircle, ArrowDownCircle, MinusCircle, Link as LinkIcon, Eye, Clock, MoveHorizontal, ZoomIn, Aperture, RotateCcw, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Copy, RefreshCw, Type, Sparkles, Activity, ArrowUp, Code, Maximize, Sun, Moon, AlignLeft, AlignCenter, AlignRight, ArrowUpCircle, ArrowDownCircle, MinusCircle, Link as LinkIcon, Eye, Clock, MoveHorizontal, ZoomIn, Aperture, RotateCcw, Download } from 'lucide-react';
 
-// NOTE: Renamed the default function export to 'App' for standard Vite/Netlify projects
 export default function App() {
   const [text, setText] = useState('Welcome to my website');
   const [linkUrl, setLinkUrl] = useState('');
@@ -58,7 +57,7 @@ export default function App() {
 
   // Animation definitions for the preview
   const getPreviewContent = () => {
-    const baseStyle = {
+    const baseStyle: any = {
       color: textColor,
       fontSize: `${fontSize}px`,
       fontFamily: fontFamily,
@@ -100,7 +99,7 @@ export default function App() {
                     backgroundColor: textColor,
                     verticalAlign: 'baseline',
                     marginLeft: '1px',
-                    animation: 'blink-caret 0.75s step-end infinite'
+                    animation: 'blink-caret-opacity 0.75s step-end infinite' // FIX: Uses opacity animation only
                 }}></span>
             </Wrapper>
         );
@@ -118,7 +117,7 @@ export default function App() {
           whiteSpace: 'nowrap',
           margin: alignH === 'center' ? '0 auto' : (alignH === 'right' ? '0 0 0 auto' : '0'),
           letterSpacing: '0.1em',
-          animation: `typing ${duration}s steps(${Math.max(1, text.length)}, end), blink-caret .75s step-end infinite`,
+          animation: `typing ${duration}s steps(${Math.max(1, text.length)}, end), blink-caret-border .75s step-end infinite`, // FIX: Uses border animation only
           maxWidth: '100%',
         };
         break;
@@ -157,10 +156,12 @@ export default function App() {
     return <Wrapper style={specificStyle}>{text}</Wrapper>;
   };
 
-  // CSS Keyframes for the Preview
+  // CSS Keyframes for the Preview (FIXED: Separated opacity and border animations)
   const keyframesStyle = `
     @keyframes typing { from { width: 0 } to { width: 100% } }
-    @keyframes blink-caret { from, to { border-color: transparent; opacity: 0; } 50% { border-color: ${textColor}; opacity: 1; } }
+    @keyframes blink-caret-border { from, to { border-color: transparent; } 50% { border-color: ${textColor}; } }
+    @keyframes blink-caret-opacity { from, to { opacity: 0; } 50% { opacity: 1; } }
+    
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulsate { 100% { text-shadow: 0 0 4px #fff, 0 0 11px #fff, 0 0 19px #fff, 0 0 40px ${textColor}, 0 0 80px ${textColor}, 0 0 90px ${textColor}, 0 0 100px ${textColor}, 0 0 150px ${textColor}; } 0% { text-shadow: 0 0 2px #fff, 0 0 4px #fff, 0 0 6px #fff, 0 0 10px ${textColor}, 0 0 45px ${textColor}, 0 0 55px ${textColor}, 0 0 70px ${textColor}, 0 0 80px ${textColor}; } }
     @keyframes shine { to { background-position: 200% center; } }
