@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Copy, Type, Sparkles, Activity, ArrowUp, Code, Maximize, Sun, Moon, AlignLeft, AlignCenter, AlignRight, ArrowUpCircle, MinusCircle, Link as LinkIcon, Eye, Clock, MoveHorizontal, ZoomIn, Aperture, RotateCcw, Download, Timer, RefreshCw, ArrowDownCircle, Shuffle, Bold, Italic } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Copy, Type, Sparkles, Activity, ArrowUp, Code, Maximize, Sun, Moon, AlignLeft, AlignCenter, AlignRight, ArrowUpCircle, MinusCircle, Link as LinkIcon, Eye, Clock, MoveHorizontal, ZoomIn, Aperture, RotateCcw, Download, Timer, RefreshCw, ArrowDownCircle, Shuffle, Bold, Italic, Repeat } from 'lucide-react';
 
 export default function App() {
-  const [text, setText] = useState('Mix and match styles!');
+  const [text, setText] = useState('I am a Developer\nI am a Designer\nI am a Creator');
   const [linkUrl, setLinkUrl] = useState('');
   
   // CHANGED: animations is now an array to support mixing
-  const [animations, setAnimations] = useState<string[]>(['typewriter', 'neon']); 
+  const [animations, setAnimations] = useState<string[]>(['typewriter']); 
   
   const [fontSize, setFontSize] = useState(40);
   const [textColor, setTextColor] = useState('#ffffff');
@@ -18,6 +18,9 @@ export default function App() {
   // NEW: Font Styling State
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
+  
+  // NEW: Typewriter Looping State
+  const [loopTypewriter, setLoopTypewriter] = useState(true);
 
   const [duration, setDuration] = useState(2);
   const [copied, setCopied] = useState(false);
@@ -48,13 +51,11 @@ export default function App() {
     const colors = ['#ffffff', '#ff0055', '#0099ff', '#00ff99', '#ffaa00', '#aa00ff', '#ff00cc', '#ffff00'];
     const animOptions = ['typewriter', 'fadeup', 'neon', 'gradient', 'bounce', 'slide', 'zoom', 'blur', 'spin'];
     
-    // Random Font & Color
     setFontFamily(fonts[Math.floor(Math.random() * fonts.length)]);
     setTextColor(colors[Math.floor(Math.random() * colors.length)]);
     setIsBold(Math.random() > 0.5);
     setIsItalic(Math.random() > 0.8);
     
-    // Random Animations (1 or 2 mixed)
     const numAnims = Math.random() > 0.7 ? 2 : 1;
     const newAnims: string[] = [];
     
@@ -65,29 +66,24 @@ export default function App() {
         }
     }
     setAnimations(newAnims);
+    // Reset loop default if randomizing
+    if (newAnims.includes('typewriter')) setLoopTypewriter(false);
   };
 
-  // Toggle Animation Logic (Fixed for proper deselection)
+  // Toggle Animation Logic
   const toggleAnimation = (id: string) => {
     setAnimations(prev => {
-      // 1. If currently selected, remove it (Toggle OFF)
       if (prev.includes(id)) {
         return prev.filter(a => a !== id);
       }
-
-      // 2. If selecting (Toggle ON), handle conflicts
       if (id === 'countdown') {
-         // If picking countdown, ensure typewriter is removed
          const clean = prev.filter(a => a !== 'typewriter');
          return [...clean, id];
       }
       if (id === 'typewriter') {
-         // If picking typewriter, ensure countdown is removed
          const clean = prev.filter(a => a !== 'countdown');
          return [...clean, id];
       }
-      
-      // 3. Standard selection for non-conflicting types
       return [...prev, id];
     });
   };
@@ -125,9 +121,63 @@ export default function App() {
     return `https://${cleanUrl}`;
   };
 
-  // JS-based typewriter effect
+  // --- TYPEWRITER LOGIC (Standard & Looping) ---
   useEffect(() => {
-    if (animations.includes('typewriter') && allowWrap) {
+    if (!animations.includes('typewriter')) return;
+
+    // 1. LOOPING TYPEWRITER LOGIC
+    if (loopTypewriter) {
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) {
+            setPreviewTypedText('');
+            return;
+        }
+
+        let isMounted = true;
+        let lineIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let timeoutId: any;
+
+        const typeLoop = () => {
+            if (!isMounted) return;
+
+            const currentLine = lines[lineIndex];
+            
+            // Determine text state
+            if (isDeleting) {
+                setPreviewTypedText(currentLine.substring(0, charIndex - 1));
+                charIndex--;
+            } else {
+                setPreviewTypedText(currentLine.substring(0, charIndex + 1));
+                charIndex++;
+            }
+
+            // Determine speed
+            let typeSpeed = 100; // Normal typing speed
+            if (isDeleting) typeSpeed = 50; // Fast delete
+
+            // Logic for switching states
+            if (!isDeleting && charIndex === currentLine.length) {
+                // Finished typing line -> Wait
+                typeSpeed = duration * 1000; 
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                // Finished deleting -> Switch Line
+                isDeleting = false;
+                lineIndex = (lineIndex + 1) % lines.length;
+                typeSpeed = 500; // Small pause before new line
+            }
+
+            timeoutId = setTimeout(typeLoop, typeSpeed);
+        };
+
+        typeLoop();
+        return () => { isMounted = false; clearTimeout(timeoutId); };
+    } 
+    
+    // 2. STANDARD TYPEWRITER LOGIC (Multi-line static)
+    else if (allowWrap) {
       setPreviewTypedText('');
       let currentIndex = 0;
       const charDelay = (duration * 1000) / Math.max(1, text.length);
@@ -143,7 +193,7 @@ export default function App() {
 
       return () => clearInterval(intervalId);
     }
-  }, [text, animations, allowWrap, duration]);
+  }, [text, animations, allowWrap, duration, loopTypewriter]);
 
   // Render Preview Content
   const getPreviewContent = () => {
@@ -209,8 +259,8 @@ export default function App() {
         specificStyle.transformStyle = 'preserve-3d';
     }
 
-    // Typewriter CSS
-    if (isTypewriter && !allowWrap) {
+    // Typewriter CSS (Standard Single Line Only)
+    if (isTypewriter && !allowWrap && !loopTypewriter) {
         specificStyle.display = 'inline-block';
         specificStyle.overflow = 'hidden';
         specificStyle.borderRight = `.15em solid ${textColor}`;
@@ -233,8 +283,8 @@ export default function App() {
         return <Wrapper style={{...specificStyle, fontVariantNumeric: 'tabular-nums'}}>{countdownString}</Wrapper>;
     }
 
-    // Case B: Multiline Typewriter (JS Based)
-    if (isTypewriter && allowWrap) {
+    // Case B: JS Typewriter (Looping OR Multi-line)
+    if (isTypewriter && (allowWrap || loopTypewriter)) {
         return (
             <Wrapper style={{...specificStyle, whiteSpace: 'pre-wrap', display: 'block' }}>
                 {previewTypedText}
@@ -289,7 +339,6 @@ export default function App() {
     const activeCSSAnimations: string[] = [];
     let specificCssProps = '';
 
-    // Add font weights to CSS
     specificCssProps += `font-weight: ${isBold ? 'bold' : 'normal'}; `;
     specificCssProps += `font-style: ${isItalic ? 'italic' : 'normal'}; `;
 
@@ -343,12 +392,12 @@ export default function App() {
             if (entry.isIntersecting) {
               ${allowWrap && isTypewriter 
                 ? 'startTypewriter();' 
-                : (isCountdown ? 'startCountdown();' : `if(text) text.style.animationPlayState = 'running';`)
+                : (isCountdown ? 'startCountdown();' : (loopTypewriter && isTypewriter ? 'startLoop();' : `if(text) text.style.animationPlayState = 'running';`))
               }
             } else {
               ${allowWrap && isTypewriter 
                 ? 'resetTypewriter();' 
-                : (isCountdown ? 'resetCountdown();' : `resetAnimation();`)
+                : (isCountdown ? 'resetCountdown();' : (loopTypewriter && isTypewriter ? 'resetLoop();' : `resetAnimation();`))
               }
             }
           });
@@ -358,6 +407,7 @@ export default function App() {
         
         ${!startOnView && allowWrap && isTypewriter ? 'setTimeout(startTypewriter, 500);' : ''}
         ${!startOnView && isCountdown ? 'startCountdown();' : ''}
+        ${!startOnView && loopTypewriter && isTypewriter ? 'startLoop();' : ''}
       });
     </script>`;
 
@@ -365,61 +415,123 @@ export default function App() {
 
     if (isCountdown) {
          htmlContent = `<div class="container"><${tagJs} class="text" id="countdown"${hrefAttr}>00d 00h 00m 00s</${tagJs}></div>`;
-         
          const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
-         
-         css = `
-            ${commonCss}
-            .text { font-variant-numeric: tabular-nums; ${animString} }
-         `;
+         css = `${commonCss} .text { font-variant-numeric: tabular-nums; ${animString} }`;
          script = `
          <script>
             let countdownInterval;
-
             function startCountdown() {
                 if(countdownInterval) clearInterval(countdownInterval);
                 const countDownDate = new Date("${targetDate}").getTime();
                 const finishedText = "${text.replace(/"/g, '\\"')}";
                 const el = document.getElementById("countdown");
-                
                 if(el) el.style.animationPlayState = 'running';
-
                 countdownInterval = setInterval(function() {
                     const now = new Date().getTime();
                     const distance = countDownDate - now;
-
                     if (distance < 0) {
                         clearInterval(countdownInterval);
                         el.innerHTML = finishedText;
                         return;
                     }
-
                     const days = Math.floor(distance / (1000 * 60 * 60 * 24));
                     const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                     const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
                     el.innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
                 }, 1000);
             }
             function resetCountdown() {
                 if(countdownInterval) clearInterval(countdownInterval);
                 const el = document.getElementById("countdown");
-                if(el) {
-                    el.style.animation = 'none';
-                    el.offsetHeight; 
-                    el.style.animation = null;
-                }
+                if(el) { el.style.animation = 'none'; el.offsetHeight; el.style.animation = null; }
             }
          </script>
          ${startOnView ? observerScript : '<script>startCountdown();</script>'}
          `;
-    } else if (isTypewriter) {
-        if (allowWrap) {
+    } 
+    else if (isTypewriter) {
+        if (loopTypewriter) {
+            // --- LOOPING TYPEWRITER EXPORT ---
+            const lines = text.split('\n').filter(l => l.trim()).map(l => l.replace(/"/g, '\\"').replace(/\n/g, '\\n'));
+            const safeLines = JSON.stringify(lines);
+            const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')};` : '';
+
+            htmlContent = `
+            <div class="container">
+                <${tagJs} class="text" id="typewriter-text"${hrefAttr}><span id="cursor"></span></${tagJs}>
+            </div>`;
+
+            css = `
+                ${commonCss}
+                .text { display: inline-block; text-align: ${alignH}; ${animString} }
+                #cursor {
+                    display: inline-block;
+                    width: 0.15em;
+                    height: 1em;
+                    background-color: ${textColor};
+                    margin-left: 1px;
+                    vertical-align: baseline;
+                    animation: blink-caret 0.75s step-end infinite;
+                }
+                @keyframes blink-caret { from, to { opacity: 0 } 50% { opacity: 1 } }
+            `;
+
+            script = `
+                <script>
+                    const lines = ${safeLines};
+                    const container = document.getElementById('typewriter-text');
+                    let cursor = document.getElementById('cursor');
+                    let loopTimer;
+                    let lineIndex = 0;
+                    let charIndex = 0;
+                    let isDeleting = false;
+                    
+                    function startLoop() {
+                        clearTimeout(loopTimer);
+                        const currentLine = lines[lineIndex];
+                        
+                        if (isDeleting) {
+                            container.textContent = currentLine.substring(0, charIndex - 1);
+                            container.appendChild(cursor);
+                            charIndex--;
+                        } else {
+                            container.textContent = currentLine.substring(0, charIndex + 1);
+                            container.appendChild(cursor);
+                            charIndex++;
+                        }
+
+                        let typeSpeed = 100;
+                        if (isDeleting) typeSpeed = 50;
+
+                        if (!isDeleting && charIndex === currentLine.length) {
+                            typeSpeed = ${duration * 1000};
+                            isDeleting = true;
+                        } else if (isDeleting && charIndex === 0) {
+                            isDeleting = false;
+                            lineIndex = (lineIndex + 1) % lines.length;
+                            typeSpeed = 500;
+                        }
+
+                        loopTimer = setTimeout(startLoop, typeSpeed);
+                    }
+                    
+                    function resetLoop() {
+                        clearTimeout(loopTimer);
+                        lineIndex = 0;
+                        charIndex = 0;
+                        isDeleting = false;
+                        container.innerHTML = '<span id="cursor"></span>';
+                        cursor = document.getElementById('cursor');
+                    }
+                </script>
+                ${startOnView ? observerScript : `<script>startLoop();</script>`}
+            `;
+        }
+        else if (allowWrap) {
             // Multiline JS Typewriter
             const charDelay = (duration * 1000) / Math.max(1, text.length);
             const safeText = text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-            
             const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
 
             htmlContent = `
@@ -583,7 +695,7 @@ ${script}
           {/* Text Input */}
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {animations.includes('countdown') ? 'Message when Finished' : 'Content'}
+                {animations.includes('countdown') ? 'Message when Finished' : (loopTypewriter ? 'Messages (One per line)' : 'Content')}
             </label>
             <textarea
               value={text}
@@ -592,6 +704,24 @@ ${script}
               placeholder={animations.includes('countdown') ? "e.g. We are Live!" : "Enter your text..."}
             />
           </div>
+
+          {/* Typewriter Options: Loop Toggle */}
+          {animations.includes('typewriter') && (
+            <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                <label className="text-xs font-semibold text-indigo-700 flex items-center gap-2">
+                    <Repeat className="w-3 h-3"/> Loop Messages
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        checked={loopTypewriter} 
+                        onChange={(e) => setLoopTypewriter(e.target.checked)} 
+                        className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+            </div>
+          )}
 
           {/* Countdown Date Picker */}
           {animations.includes('countdown') && (
@@ -681,7 +811,7 @@ ${script}
 
             <div className="space-y-2">
                <label className="text-xs text-slate-500 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Animation Duration (Seconds)
+                  <Clock className="w-3 h-3" /> {loopTypewriter && animations.includes('typewriter') ? 'Wait Time (Pause)' : 'Animation Duration'} (Seconds)
                </label>
               <input
                 type="number"
@@ -828,27 +958,6 @@ ${script}
                 </div>
               </div>
             </div>
-
-             <div className="space-y-2 pt-2">
-                <label className="text-xs text-slate-500 mb-1 block">Font Family</label>
-                <select 
-                    value={fontFamily}
-                    onChange={(e) => setFontFamily(e.target.value)}
-                    className="w-full p-2 text-sm border border-slate-200 rounded bg-white"
-                >
-                    <option value="Inter">Inter (Modern)</option>
-                    <option value="Roboto">Roboto (Clean)</option>
-                    <option value="Open Sans">Open Sans (Neutral)</option>
-                    <option value="Montserrat">Montserrat (Geometric)</option>
-                    <option value="Oswald">Oswald (Bold/Condensed)</option>
-                    <option value="Playfair Display">Playfair Display (Serif)</option>
-                    <option value="Merriweather">Merriweather (Classic Serif)</option>
-                    <option value="Courier Prime">Courier Prime (Mono)</option>
-                    <option value="Pacifico">Pacifico (Handwriting)</option>
-                    <option value="Dancing Script">Dancing Script (Cursive)</option>
-                    <option value="Press Start 2P">Press Start 2P (Retro/Pixel)</option>
-                </select>
-            </div>
           </div>
         </div>
 
@@ -921,7 +1030,7 @@ ${script}
             >
                  <div 
                     // Key prop forces a re-render when text/settings change, restarting the animation
-                    key={`${animations.join('-')}-${text}-${duration}-${fontSize}-${fontFamily}-${allowWrap}-${linkUrl}-${isBold}-${isItalic}`}
+                    key={`${animations.join('-')}-${text}-${duration}-${fontSize}-${fontFamily}-${allowWrap}-${linkUrl}-${isBold}-${isItalic}-${loopTypewriter}`}
                     style={{ width: '100%', textAlign: alignH }}
                  >
                     {getPreviewContent()}
