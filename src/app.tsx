@@ -390,14 +390,19 @@ export default function App() {
         const observer = new IntersectionObserver((entries) => {
           entries.forEach(entry => {
             if (entry.isIntersecting) {
-              ${allowWrap && isTypewriter 
-                ? 'startTypewriter();' 
-                : (isCountdown ? 'startCountdown();' : (loopTypewriter && isTypewriter ? 'startLoop();' : `if(text) text.style.animationPlayState = 'running';`))
+              // FIX: Correct order - Check Loop BEFORE generic Wrap/Typewriter
+              ${isCountdown 
+                ? 'startCountdown();' 
+                : (isTypewriter && loopTypewriter 
+                    ? 'startLoop();' 
+                    : (isTypewriter && allowWrap ? 'startTypewriter();' : `if(text) text.style.animationPlayState = 'running';`))
               }
             } else {
-              ${allowWrap && isTypewriter 
-                ? 'resetTypewriter();' 
-                : (isCountdown ? 'resetCountdown();' : (loopTypewriter && isTypewriter ? 'resetLoop();' : `resetAnimation();`))
+              ${isCountdown 
+                ? 'resetCountdown();' 
+                : (isTypewriter && loopTypewriter 
+                    ? 'resetLoop();' 
+                    : (isTypewriter && allowWrap ? 'resetTypewriter();' : `resetAnimation();`))
               }
             }
           });
@@ -405,9 +410,9 @@ export default function App() {
         
         if(target) observer.observe(target);
         
-        ${!startOnView && allowWrap && isTypewriter ? 'setTimeout(startTypewriter, 500);' : ''}
+        ${!startOnView && isTypewriter && loopTypewriter ? 'startLoop();' : ''}
+        ${!startOnView && isTypewriter && allowWrap && !loopTypewriter ? 'setTimeout(startTypewriter, 500);' : ''}
         ${!startOnView && isCountdown ? 'startCountdown();' : ''}
-        ${!startOnView && loopTypewriter && isTypewriter ? 'startLoop();' : ''}
       });
     </script>`;
 
@@ -486,38 +491,45 @@ export default function App() {
                     let lineIndex = 0;
                     let charIndex = 0;
                     let isDeleting = false;
+                    let isRunning = false;
                     
                     function startLoop() {
-                        clearTimeout(loopTimer);
-                        const currentLine = lines[lineIndex];
+                        if (isRunning) return; // Fix race condition
+                        isRunning = true;
                         
-                        if (isDeleting) {
-                            container.textContent = currentLine.substring(0, charIndex - 1);
-                            container.appendChild(cursor);
-                            charIndex--;
-                        } else {
-                            container.textContent = currentLine.substring(0, charIndex + 1);
-                            container.appendChild(cursor);
-                            charIndex++;
+                        function loop() {
+                            const currentLine = lines[lineIndex];
+                            
+                            if (isDeleting) {
+                                container.textContent = currentLine.substring(0, charIndex - 1);
+                                container.appendChild(cursor);
+                                charIndex--;
+                            } else {
+                                container.textContent = currentLine.substring(0, charIndex + 1);
+                                container.appendChild(cursor);
+                                charIndex++;
+                            }
+
+                            let typeSpeed = 100;
+                            if (isDeleting) typeSpeed = 50;
+
+                            if (!isDeleting && charIndex === currentLine.length) {
+                                typeSpeed = ${duration * 1000};
+                                isDeleting = true;
+                            } else if (isDeleting && charIndex === 0) {
+                                isDeleting = false;
+                                lineIndex = (lineIndex + 1) % lines.length;
+                                typeSpeed = 500;
+                            }
+
+                            loopTimer = setTimeout(loop, typeSpeed);
                         }
-
-                        let typeSpeed = 100;
-                        if (isDeleting) typeSpeed = 50;
-
-                        if (!isDeleting && charIndex === currentLine.length) {
-                            typeSpeed = ${duration * 1000};
-                            isDeleting = true;
-                        } else if (isDeleting && charIndex === 0) {
-                            isDeleting = false;
-                            lineIndex = (lineIndex + 1) % lines.length;
-                            typeSpeed = 500;
-                        }
-
-                        loopTimer = setTimeout(startLoop, typeSpeed);
+                        loop();
                     }
                     
                     function resetLoop() {
                         clearTimeout(loopTimer);
+                        isRunning = false;
                         lineIndex = 0;
                         charIndex = 0;
                         isDeleting = false;
@@ -529,7 +541,7 @@ export default function App() {
             `;
         }
         else if (allowWrap) {
-            // Multiline JS Typewriter
+            // Multiline JS Typewriter (Non-Looping)
             const charDelay = (duration * 1000) / Math.max(1, text.length);
             const safeText = text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
             const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
@@ -561,20 +573,30 @@ export default function App() {
                     let cursor = document.getElementById('cursor');
                     let i = 0;
                     let typeTimer;
+                    let isTyping = false;
                     
                     function startTypewriter() {
+                        if (isTyping) return;
+                        isTyping = true;
                         if(container) container.style.animationPlayState = 'running';
-                        if (i < text.length) {
-                            const char = text.charAt(i);
-                            const span = document.createElement('span');
-                            span.textContent = char;
-                            container.insertBefore(span, cursor);
-                            i++;
-                            typeTimer = setTimeout(startTypewriter, ${charDelay});
+                        
+                        function loop() {
+                            if (i < text.length) {
+                                const char = text.charAt(i);
+                                const span = document.createElement('span');
+                                span.textContent = char;
+                                container.insertBefore(span, cursor);
+                                i++;
+                                typeTimer = setTimeout(loop, ${charDelay});
+                            } else {
+                                isTyping = false;
+                            }
                         }
+                        loop();
                     }
                     function resetTypewriter() {
                         clearTimeout(typeTimer);
+                        isTyping = false;
                         i = 0;
                         container.innerHTML = '<span id="cursor"></span>';
                         cursor = document.getElementById('cursor');
