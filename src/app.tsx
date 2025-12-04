@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Type, Sparkles, Activity, ArrowUp, Code, Maximize, Sun, Moon, AlignLeft, AlignCenter, AlignRight, ArrowUpCircle, MinusCircle, Link as LinkIcon, Eye, Clock, MoveHorizontal, ZoomIn, Aperture, RotateCcw, Download, Timer, RefreshCw, ArrowDownCircle, Shuffle, Bold, Italic, Repeat } from 'lucide-react';
+import { Copy, Type, Sparkles, Activity, ArrowUp, Code, Maximize, Sun, Moon, AlignLeft, AlignCenter, AlignRight, ArrowUpCircle, MinusCircle, Link as LinkIcon, Eye, Clock, MoveHorizontal, ZoomIn, Aperture, RotateCcw, Download, Timer, RefreshCw, ArrowDownCircle, Shuffle, Bold, Italic, Repeat, PlayCircle } from 'lucide-react';
 
 export default function App() {
   const [text, setText] = useState('I am a Developer\nI am a Designer\nI am a Creator');
   const [linkUrl, setLinkUrl] = useState('');
   
-  // CHANGED: animations is now an array to support mixing
   const [animations, setAnimations] = useState<string[]>(['typewriter']); 
   
   const [fontSize, setFontSize] = useState(40);
@@ -15,22 +14,19 @@ export default function App() {
   const [allowWrap, setAllowWrap] = useState(false);
   const [fontFamily, setFontFamily] = useState('Inter');
   
-  // NEW: Font Styling State
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   
-  // NEW: Typewriter Looping State
   const [loopTypewriter, setLoopTypewriter] = useState(true);
+  const [replayOnScroll, setReplayOnScroll] = useState(false); // New Toggle
 
   const [duration, setDuration] = useState(2);
   const [copied, setCopied] = useState(false);
   const [startOnView, setStartOnView] = useState(true);
   
-  // Countdown State
   const [targetDate, setTargetDate] = useState('');
   const [countdownString, setCountdownString] = useState('00d 00h 00m 00s');
 
-  // Alignment State
   const [alignH, setAlignH] = useState<'left' | 'center' | 'right'>('center');
   const [alignV, setAlignV] = useState<'flex-start' | 'center' | 'flex-end'>('center');
 
@@ -66,7 +62,6 @@ export default function App() {
         }
     }
     setAnimations(newAnims);
-    // Reset loop default if randomizing
     if (newAnims.includes('typewriter')) setLoopTypewriter(false);
   };
 
@@ -121,11 +116,10 @@ export default function App() {
     return `https://${cleanUrl}`;
   };
 
-  // --- TYPEWRITER LOGIC (Standard & Looping) ---
+  // --- PREVIEW LOGIC ONLY ---
   useEffect(() => {
     if (!animations.includes('typewriter')) return;
 
-    // 1. LOOPING TYPEWRITER LOGIC
     if (loopTypewriter) {
         const lines = text.split('\n').filter(line => line.trim() !== '');
         if (lines.length === 0) {
@@ -141,10 +135,8 @@ export default function App() {
 
         const typeLoop = () => {
             if (!isMounted) return;
-
             const currentLine = lines[lineIndex];
             
-            // Determine text state
             if (isDeleting) {
                 setPreviewTypedText(currentLine.substring(0, charIndex - 1));
                 charIndex--;
@@ -153,35 +145,25 @@ export default function App() {
                 charIndex++;
             }
 
-            // Determine speed
-            let typeSpeed = 100; // Normal typing speed
-            if (isDeleting) typeSpeed = 50; // Fast delete
+            let typeSpeed = 100;
+            if (isDeleting) typeSpeed = 50;
 
-            // Logic for switching states
             if (!isDeleting && charIndex === currentLine.length) {
-                // Finished typing line -> Wait
                 typeSpeed = duration * 1000; 
                 isDeleting = true;
             } else if (isDeleting && charIndex === 0) {
-                // Finished deleting -> Switch Line
                 isDeleting = false;
                 lineIndex = (lineIndex + 1) % lines.length;
-                typeSpeed = 500; // Small pause before new line
+                typeSpeed = 500;
             }
-
             timeoutId = setTimeout(typeLoop, typeSpeed);
         };
-
         typeLoop();
         return () => { isMounted = false; clearTimeout(timeoutId); };
-    } 
-    
-    // 2. STANDARD TYPEWRITER LOGIC (Multi-line static)
-    else if (allowWrap) {
+    } else if (allowWrap) {
       setPreviewTypedText('');
       let currentIndex = 0;
       const charDelay = (duration * 1000) / Math.max(1, text.length);
-      
       const intervalId = setInterval(() => {
         if (currentIndex < text.length) {
           setPreviewTypedText(prev => prev + text.charAt(currentIndex));
@@ -190,12 +172,10 @@ export default function App() {
           clearInterval(intervalId);
         }
       }, charDelay);
-
       return () => clearInterval(intervalId);
     }
   }, [text, animations, allowWrap, duration, loopTypewriter]);
 
-  // Render Preview Content
   const getPreviewContent = () => {
     const isCountdown = animations.includes('countdown');
     const isTypewriter = animations.includes('typewriter');
@@ -215,17 +195,10 @@ export default function App() {
       animation: '', 
     };
 
-    // Wrapper
     const Wrapper = ({ children, style, className }: any) => {
         if (linkUrl) {
             return (
-                <a 
-                    href={getSafeUrl(linkUrl)} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    style={{...style, display: style.display || 'inline-block'}} 
-                    className={className}
-                >
+                <a href={getSafeUrl(linkUrl)} target="_blank" rel="noopener noreferrer" style={{...style, display: style.display || 'inline-block'}} className={className}>
                     {children}
                 </a>
             );
@@ -233,33 +206,27 @@ export default function App() {
         return <div style={style} className={className}>{children}</div>;
     };
 
-    // --- Build Composite Styles ---
-    const activeAnimationStrings: string[] = [];
+    const activeCSSAnimations: string[] = []; 
     const specificStyle: any = { ...baseStyle };
 
-    if (animations.includes('neon')) {
-        specificStyle.textShadow = `0 0 5px #fff, 0 0 10px #fff, 0 0 20px ${textColor}, 0 0 30px ${textColor}, 0 0 40px ${textColor}`;
-        activeAnimationStrings.push(`pulsate ${duration}s infinite alternate`);
-    }
+    if (animations.includes('neon')) activeCSSAnimations.push(`pulsate ${duration}s infinite alternate`);
     if (animations.includes('gradient')) {
         specificStyle.background = `linear-gradient(to right, ${textColor}, #ff00cc, #3333ff, ${textColor})`;
         specificStyle.backgroundSize = '300% auto';
         specificStyle.WebkitBackgroundClip = 'text';
         specificStyle.WebkitTextFillColor = 'transparent';
-        activeAnimationStrings.push(`shine ${duration}s linear infinite`);
+        activeCSSAnimations.push(`shine ${duration}s linear infinite`);
     }
-
-    if (animations.includes('fadeup')) activeAnimationStrings.push(`fadeInUp ${duration}s ease-out forwards`);
-    if (animations.includes('bounce')) activeAnimationStrings.push(`bounceIn ${duration}s cubic-bezier(0.215, 0.610, 0.355, 1.000) both`);
-    if (animations.includes('slide')) activeAnimationStrings.push(`slideIn ${duration}s ease-out forwards`);
-    if (animations.includes('zoom')) activeAnimationStrings.push(`zoomIn ${duration}s ease-out forwards`);
-    if (animations.includes('blur')) activeAnimationStrings.push(`blurIn ${duration}s ease-out forwards`);
+    if (animations.includes('fadeup')) activeCSSAnimations.push(`fadeInUp ${duration}s ease-out forwards`);
+    if (animations.includes('bounce')) activeCSSAnimations.push(`bounceIn ${duration}s cubic-bezier(0.215, 0.610, 0.355, 1.000) both`);
+    if (animations.includes('slide')) activeCSSAnimations.push(`slideIn ${duration}s ease-out forwards`);
+    if (animations.includes('zoom')) activeCSSAnimations.push(`zoomIn ${duration}s ease-out forwards`);
+    if (animations.includes('blur')) activeCSSAnimations.push(`blurIn ${duration}s ease-out forwards`);
     if (animations.includes('spin')) {
-        activeAnimationStrings.push(`spinIn ${duration}s ease-out forwards`);
+        activeCSSAnimations.push(`spinIn ${duration}s ease-out forwards`);
         specificStyle.transformStyle = 'preserve-3d';
     }
 
-    // Typewriter CSS (Standard Single Line Only)
     if (isTypewriter && !allowWrap && !loopTypewriter) {
         specificStyle.display = 'inline-block';
         specificStyle.overflow = 'hidden';
@@ -268,43 +235,26 @@ export default function App() {
         specificStyle.margin = alignH === 'center' ? '0 auto' : (alignH === 'right' ? '0 0 0 auto' : '0');
         specificStyle.letterSpacing = '0.1em';
         specificStyle.maxWidth = '100%';
-        activeAnimationStrings.push(`typing ${duration}s steps(${Math.max(1, text.length)}, end)`);
-        activeAnimationStrings.push(`blink-caret-border .75s step-end infinite`);
+        activeCSSAnimations.push(`typing ${duration}s steps(${Math.max(1, text.length)}, end)`);
+        activeCSSAnimations.push(`blink-caret-border .75s step-end infinite`);
     }
 
-    if (activeAnimationStrings.length > 0) {
-        specificStyle.animation = activeAnimationStrings.join(', ');
+    if (activeCSSAnimations.length > 0) {
+        specificStyle.animation = activeCSSAnimations.join(', ');
     }
 
-    // --- Content Rendering ---
-    
-    // Case A: Countdown
-    if (isCountdown) {
-        return <Wrapper style={{...specificStyle, fontVariantNumeric: 'tabular-nums'}}>{countdownString}</Wrapper>;
-    }
-
-    // Case B: JS Typewriter (Looping OR Multi-line)
+    if (isCountdown) return <Wrapper style={{...specificStyle, fontVariantNumeric: 'tabular-nums'}}>{countdownString}</Wrapper>;
     if (isTypewriter && (allowWrap || loopTypewriter)) {
         return (
             <Wrapper style={{...specificStyle, whiteSpace: 'pre-wrap', display: 'block' }}>
                 {previewTypedText}
-                <span style={{ 
-                    display: 'inline-block', 
-                    width: '0.15em', 
-                    height: '1em', 
-                    backgroundColor: textColor,
-                    verticalAlign: 'baseline',
-                    marginLeft: '1px',
-                    animation: 'blink-caret-opacity 0.75s step-end infinite'
-                }}></span>
+                <span style={{ display: 'inline-block', width: '0.15em', height: '1em', backgroundColor: textColor, verticalAlign: 'baseline', marginLeft: '1px', animation: 'blink-caret-opacity 0.75s step-end infinite' }}></span>
             </Wrapper>
         );
     }
-
     return <Wrapper style={specificStyle}>{text}</Wrapper>;
   };
 
-  // Shared Keyframes
   const keyframesStyle = `
     @keyframes typing { from { width: 0 } to { width: 100% } }
     @keyframes blink-caret-border { from, to { border-color: transparent; } 50% { border-color: ${textColor}; } }
@@ -319,14 +269,15 @@ export default function App() {
     @keyframes spinIn { from { opacity: 0; transform: rotate3d(0, 1, 0, 90deg); } to { opacity: 1; transform: rotate3d(0, 1, 0, 0deg); } }
   `;
 
-  // --- HTML GENERATOR ---
+  // --- HTML GENERATOR (Unified & Bulletproof) ---
   const generateCode = () => {
     const isCountdown = animations.includes('countdown');
     const isTypewriter = animations.includes('typewriter');
     
     let css = '';
     let htmlContent = '';
-    let script = '';
+    let scriptContent = ''; 
+    let resetScriptContent = ''; // For Replay logic
     
     const finalBgColor = isTransparent ? 'transparent' : bgColor;
     const safeUrl = getSafeUrl(linkUrl);
@@ -335,8 +286,7 @@ export default function App() {
     const hrefAttr = linkUrl ? ` href="${safeUrl}" target="_blank" rel="noopener noreferrer"` : '';
     const cursorStyle = linkUrl ? 'cursor: pointer;' : '';
     
-    // --- Compose CSS for Export ---
-    const activeCSSAnimations: string[] = [];
+    const activeCSSAnimations: string[] = []; 
     let specificCssProps = '';
 
     specificCssProps += `font-weight: ${isBold ? 'bold' : 'normal'}; `;
@@ -372,273 +322,229 @@ export default function App() {
       .text { font-size: ${fontSize}px; color: ${textColor}; margin: 0; line-height: 1.2; white-space: ${allowWrap ? 'pre-wrap' : 'nowrap'}; word-wrap: ${allowWrap ? 'break-word' : 'normal'}; text-decoration: none; ${cursorStyle} ${specificCssProps} }
     `;
 
-    // Observer for Scroll
-    const observerScript = `
-    <script>
-      document.addEventListener("DOMContentLoaded", function() {
-        const target = document.querySelector('.container');
-        const text = document.querySelector('.text');
-        
-        function resetAnimation() {
-            if (text) {
-                text.style.animation = 'none';
-                text.offsetHeight; 
-                text.style.animation = null; 
-            }
-        }
-
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              // FIX: Correct order - Check Loop BEFORE generic Wrap/Typewriter
-              ${isCountdown 
-                ? 'startCountdown();' 
-                : (isTypewriter && loopTypewriter 
-                    ? 'startLoop();' 
-                    : (isTypewriter && allowWrap ? 'startTypewriter();' : `if(text) text.style.animationPlayState = 'running';`))
-              }
-            } else {
-              ${isCountdown 
-                ? 'resetCountdown();' 
-                : (isTypewriter && loopTypewriter 
-                    ? 'resetLoop();' 
-                    : (isTypewriter && allowWrap ? 'resetTypewriter();' : `resetAnimation();`))
-              }
-            }
-          });
-        }, { threshold: 0.1 });
-        
-        if(target) observer.observe(target);
-        
-        ${!startOnView && isTypewriter && loopTypewriter ? 'startLoop();' : ''}
-        ${!startOnView && isTypewriter && allowWrap && !loopTypewriter ? 'setTimeout(startTypewriter, 500);' : ''}
-        ${!startOnView && isCountdown ? 'startCountdown();' : ''}
-      });
-    </script>`;
-
-    // --- Generate HTML based on Mode ---
-
+    // --- LOGIC GENERATION ---
     if (isCountdown) {
          htmlContent = `<div class="container"><${tagJs} class="text" id="countdown"${hrefAttr}>00d 00h 00m 00s</${tagJs}></div>`;
          const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
          css = `${commonCss} .text { font-variant-numeric: tabular-nums; ${animString} }`;
-         script = `
-         <script>
-            let countdownInterval;
+         
+         scriptContent = `
+            var countdownInterval;
             function startCountdown() {
                 if(countdownInterval) clearInterval(countdownInterval);
-                const countDownDate = new Date("${targetDate}").getTime();
-                const finishedText = "${text.replace(/"/g, '\\"')}";
-                const el = document.getElementById("countdown");
+                var countDownDate = new Date("${targetDate}").getTime();
+                var finishedText = "${text.replace(/"/g, '\\"')}";
+                var el = document.getElementById("countdown");
                 if(el) el.style.animationPlayState = 'running';
+                
                 countdownInterval = setInterval(function() {
-                    const now = new Date().getTime();
-                    const distance = countDownDate - now;
+                    var now = new Date().getTime();
+                    var distance = countDownDate - now;
                     if (distance < 0) {
                         clearInterval(countdownInterval);
                         el.innerHTML = finishedText;
                         return;
                     }
-                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    var seconds = Math.floor((distance % (1000 * 60)) / 1000);
                     el.innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
                 }, 1000);
             }
-            function resetCountdown() {
+            function runSpecific() { startCountdown(); }
+         `;
+         resetScriptContent = `
+            function resetSpecific() {
                 if(countdownInterval) clearInterval(countdownInterval);
-                const el = document.getElementById("countdown");
-                if(el) { el.style.animation = 'none'; el.offsetHeight; el.style.animation = null; }
             }
-         </script>
-         ${startOnView ? observerScript : '<script>startCountdown();</script>'}
          `;
     } 
-    else if (isTypewriter) {
+    else if (isTypewriter && (loopTypewriter || allowWrap)) {
+        // JS Typewriter Logic (Unified)
+        const lines = text.split('\n').filter(l => l.trim()).map(l => l.replace(/"/g, '\\"').replace(/\n/g, '\\n'));
+        const safeLines = JSON.stringify(lines);
+        const safeText = text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        
+        const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')};` : '';
+
+        // Random ID to prevent collision if user embeds multiple
+        const uniqueId = Math.random().toString(36).substr(2, 9);
+        const containerId = `typewriter-${uniqueId}`;
+
+        htmlContent = `
+        <div class="container">
+            <${tagJs} class="text" id="${containerId}"${hrefAttr}><span class="cursor"></span></${tagJs}>
+        </div>`;
+
+        css = `
+            ${commonCss}
+            .text { display: inline-block; text-align: ${alignH}; ${animString} }
+            .cursor {
+                display: inline-block;
+                width: 0.15em;
+                height: 1em;
+                background-color: ${textColor};
+                margin-left: 1px;
+                vertical-align: baseline;
+                animation: blink-caret 0.75s step-end infinite;
+            }
+            @keyframes blink-caret { from, to { opacity: 0 } 50% { opacity: 1 } }
+        `;
+
         if (loopTypewriter) {
-            // --- LOOPING TYPEWRITER EXPORT ---
-            const lines = text.split('\n').filter(l => l.trim()).map(l => l.replace(/"/g, '\\"').replace(/\n/g, '\\n'));
-            const safeLines = JSON.stringify(lines);
-            const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')};` : '';
-
-            htmlContent = `
-            <div class="container">
-                <${tagJs} class="text" id="typewriter-text"${hrefAttr}><span id="cursor"></span></${tagJs}>
-            </div>`;
-
-            css = `
-                ${commonCss}
-                .text { display: inline-block; text-align: ${alignH}; ${animString} }
-                #cursor {
-                    display: inline-block;
-                    width: 0.15em;
-                    height: 1em;
-                    background-color: ${textColor};
-                    margin-left: 1px;
-                    vertical-align: baseline;
-                    animation: blink-caret 0.75s step-end infinite;
-                }
-                @keyframes blink-caret { from, to { opacity: 0 } 50% { opacity: 1 } }
-            `;
-
-            script = `
-                <script>
-                    const lines = ${safeLines};
-                    const container = document.getElementById('typewriter-text');
-                    let cursor = document.getElementById('cursor');
-                    let loopTimer;
-                    let lineIndex = 0;
-                    let charIndex = 0;
-                    let isDeleting = false;
-                    let isRunning = false;
-                    
-                    function startLoop() {
-                        if (isRunning) return; // Fix race condition
-                        isRunning = true;
-                        
-                        function loop() {
-                            const currentLine = lines[lineIndex];
-                            
-                            if (isDeleting) {
-                                container.textContent = currentLine.substring(0, charIndex - 1);
-                                container.appendChild(cursor);
-                                charIndex--;
-                            } else {
-                                container.textContent = currentLine.substring(0, charIndex + 1);
-                                container.appendChild(cursor);
-                                charIndex++;
-                            }
-
-                            let typeSpeed = 100;
-                            if (isDeleting) typeSpeed = 50;
-
-                            if (!isDeleting && charIndex === currentLine.length) {
-                                typeSpeed = ${duration * 1000};
-                                isDeleting = true;
-                            } else if (isDeleting && charIndex === 0) {
-                                isDeleting = false;
-                                lineIndex = (lineIndex + 1) % lines.length;
-                                typeSpeed = 500;
-                            }
-
-                            loopTimer = setTimeout(loop, typeSpeed);
+            scriptContent = `
+                var lines = ${safeLines};
+                var container = document.getElementById('${containerId}');
+                var cursor = container.querySelector('.cursor');
+                var loopTimer;
+                var lineIndex = 0;
+                var charIndex = 0;
+                var isDeleting = false;
+                
+                function runSpecific() {
+                    clearTimeout(loopTimer);
+                    function loop() {
+                        var currentLine = lines[lineIndex];
+                        if (isDeleting) {
+                            container.textContent = currentLine.substring(0, charIndex - 1);
+                            container.appendChild(cursor);
+                            charIndex--;
+                        } else {
+                            container.textContent = currentLine.substring(0, charIndex + 1);
+                            container.appendChild(cursor);
+                            charIndex++;
                         }
-                        loop();
-                    }
-                    
-                    function resetLoop() {
-                        clearTimeout(loopTimer);
-                        isRunning = false;
-                        lineIndex = 0;
-                        charIndex = 0;
-                        isDeleting = false;
-                        container.innerHTML = '<span id="cursor"></span>';
-                        cursor = document.getElementById('cursor');
-                    }
-                </script>
-                ${startOnView ? observerScript : `<script>startLoop();</script>`}
-            `;
-        }
-        else if (allowWrap) {
-            // Multiline JS Typewriter (Non-Looping)
-            const charDelay = (duration * 1000) / Math.max(1, text.length);
-            const safeText = text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-            const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
-
-            htmlContent = `
-            <div class="container">
-                <${tagJs} class="text" id="typewriter-text"${hrefAttr}><span id="cursor"></span></${tagJs}>
-            </div>`;
-
-            css = `
-                ${commonCss}
-                .text { display: inline-block; text-align: ${alignH}; ${animString} }
-                #cursor {
-                    display: inline-block;
-                    width: 0.15em;
-                    height: 1em;
-                    background-color: ${textColor};
-                    margin-left: 1px;
-                    vertical-align: baseline;
-                    animation: blink-caret 0.75s step-end infinite;
-                }
-                @keyframes blink-caret { from, to { opacity: 0 } 50% { opacity: 1 } }
-            `;
-
-            script = `
-                <script>
-                    const text = "${safeText}";
-                    const container = document.getElementById('typewriter-text');
-                    let cursor = document.getElementById('cursor');
-                    let i = 0;
-                    let typeTimer;
-                    let isTyping = false;
-                    
-                    function startTypewriter() {
-                        if (isTyping) return;
-                        isTyping = true;
-                        if(container) container.style.animationPlayState = 'running';
-                        
-                        function loop() {
-                            if (i < text.length) {
-                                const char = text.charAt(i);
-                                const span = document.createElement('span');
-                                span.textContent = char;
-                                container.insertBefore(span, cursor);
-                                i++;
-                                typeTimer = setTimeout(loop, ${charDelay});
-                            } else {
-                                isTyping = false;
-                            }
+                        var typeSpeed = 100;
+                        if (isDeleting) typeSpeed = 50;
+                        if (!isDeleting && charIndex === currentLine.length) {
+                            typeSpeed = ${duration * 1000};
+                            isDeleting = true;
+                        } else if (isDeleting && charIndex === 0) {
+                            isDeleting = false;
+                            lineIndex = (lineIndex + 1) % lines.length;
+                            typeSpeed = 500;
                         }
-                        loop();
+                        loopTimer = setTimeout(loop, typeSpeed);
                     }
-                    function resetTypewriter() {
-                        clearTimeout(typeTimer);
-                        isTyping = false;
-                        i = 0;
-                        container.innerHTML = '<span id="cursor"></span>';
-                        cursor = document.getElementById('cursor');
-                        container.style.animation = 'none';
-                        container.offsetHeight; 
-                        container.style.animation = null;
-                    }
-                </script>
-                ${startOnView ? observerScript : `<script>setTimeout(startTypewriter, 500);</script>`}
+                    loop();
+                }
+            `;
+            resetScriptContent = `
+                function resetSpecific() {
+                    clearTimeout(loopTimer);
+                    lineIndex = 0; charIndex = 0; isDeleting = false;
+                    container.innerHTML = '<span class="cursor"></span>';
+                    cursor = container.querySelector('.cursor');
+                }
             `;
         } else {
-            // Single line CSS Typewriter
-            activeCSSAnimations.push(`typing ${duration}s steps(${text.length}, end)`);
-            activeCSSAnimations.push(`blink-caret .75s step-end infinite`);
-            const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
-            
-            htmlContent = `<div class="container"><${tag} class="text"${hrefAttr}>${text}</${tag}></div>`;
-            const marginLogic = alignH === 'center' ? '0 auto' : (alignH === 'right' ? '0 0 0 auto' : '0');
-            css = `
-                ${commonCss}
-                .text {
-                display: inline-block;
-                overflow: hidden;
-                border-right: .15em solid ${textColor};
-                margin: ${marginLogic};
-                letter-spacing: 0.1em;
-                ${animString}
-                max-width: 100%;
+            // AllowWrap Single Run
+            scriptContent = `
+                var textStr = "${safeText}";
+                var container = document.getElementById('${containerId}');
+                var cursor = container.querySelector('.cursor');
+                var i = 0;
+                var typeTimer;
+                
+                function runSpecific() {
+                    if(container) container.style.animationPlayState = 'running';
+                    function loop() {
+                        if (i < textStr.length) {
+                            var char = textStr.charAt(i);
+                            var span = document.createElement('span');
+                            span.textContent = char;
+                            container.insertBefore(span, cursor);
+                            i++;
+                            typeTimer = setTimeout(loop, ${(duration * 1000) / Math.max(1, text.length)});
+                        }
+                    }
+                    loop();
                 }
-                @keyframes typing { from { width: 0 } to { width: 100% } }
-                @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: ${textColor} } }
             `;
-            script = startOnView ? observerScript : '';
+            resetScriptContent = `
+                function resetSpecific() {
+                    clearTimeout(typeTimer);
+                    i = 0;
+                    container.innerHTML = '<span class="cursor"></span>';
+                    cursor = container.querySelector('.cursor');
+                }
+            `;
         }
     } else {
-      // Standard animations
-      htmlContent = `<div class="container"><${tag} class="text"${hrefAttr}>${text}</${tag}></div>`;
-      const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
-      
-      css = `${commonCss} .text { ${animString} }`;
-      script = startOnView ? observerScript : '';
+        // Standard CSS Animation
+        htmlContent = `<div class="container"><${tag} class="text"${hrefAttr}>${text}</${tag}></div>`;
+        const animString = activeCSSAnimations.length > 0 ? `animation: ${activeCSSAnimations.join(', ')}; ${startOnView ? 'animation-play-state: paused;' : ''}` : '';
+        css = `${commonCss} .text { ${animString} }`;
+        scriptContent = `
+            function runSpecific() {
+                var textEl = document.querySelector('.text');
+                if(textEl) textEl.style.animationPlayState = 'running';
+            }
+        `;
+        resetScriptContent = `
+            function resetSpecific() {
+                var textEl = document.querySelector('.text');
+                if(textEl) {
+                    textEl.style.animation = 'none';
+                    textEl.offsetHeight; /* trigger reflow */
+                    textEl.style.animation = null;
+                    if(${startOnView}) textEl.style.animationPlayState = 'paused';
+                }
+            }
+        `;
     }
+
+    // Unified Observer & Script Wrapper
+    const finalScript = `
+    <script>
+      (function() {
+        document.addEventListener("DOMContentLoaded", function() {
+            var target = document.querySelector('.container');
+            // LOCAL VARIABLE IS CRITICAL FOR MULTIPLE WIDGETS
+            var hasStarted = false;
+
+            // --- Animation Logic ---
+            ${scriptContent}
+            ${resetScriptContent}
+
+            function trigger() {
+                if(hasStarted) return;
+                hasStarted = true;
+                runSpecific();
+            }
+            
+            function reset() {
+                if(!hasStarted) return;
+                hasStarted = false;
+                if (typeof resetSpecific === 'function') resetSpecific();
+            }
+
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting || entry.intersectionRatio > 0) {
+                        trigger();
+                        ${!replayOnScroll ? 'observer.disconnect();' : ''} // Key change based on user preference
+                    } else {
+                        ${replayOnScroll ? 'reset();' : ''}
+                    }
+                });
+            }, { threshold: [0, 0.01] });
+
+            if(target) {
+                observer.observe(target);
+                // Instant check fallback
+                var rect = target.getBoundingClientRect();
+                if (rect.top < window.innerHeight && rect.bottom > 0) {
+                    trigger();
+                    ${!replayOnScroll ? 'observer.disconnect();' : ''}
+                }
+            }
+            
+            ${!startOnView ? 'trigger();' : ''}
+        });
+      })();
+    </script>`;
 
     const fontImport = `<link href="https://fonts.googleapis.com/css2?family=${fontFamily.replace(' ', '+')}:wght@400;700&display=swap" rel="stylesheet">`;
 
@@ -652,7 +558,7 @@ ${css}
 </head>
 <body>
 ${htmlContent}
-${script}
+${finalScript}
 </body>
 </html>`;
   };
@@ -717,7 +623,7 @@ ${script}
           {/* Text Input */}
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {animations.includes('countdown') ? 'Message when Finished' : (loopTypewriter ? 'Messages (One per line)' : 'Content')}
+                {animations.includes('countdown') ? 'Message when Finished' : (loopTypewriter && animations.includes('typewriter') ? 'Messages (One per line)' : 'Content')}
             </label>
             <textarea
               value={text}
@@ -908,17 +814,33 @@ ${script}
             {/* View Trigger Toggle */}
              <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">Start on View</label>
-                <label className="flex items-center gap-1 cursor-pointer select-none">
-                    <input 
-                        type="checkbox" 
-                        checked={startOnView} 
-                        onChange={(e) => setStartOnView(e.target.checked)}
-                        className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1">
-                       Wait for Scroll <Eye className="w-3 h-3"/>
-                    </span>
-                </label>
+                <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-1 cursor-pointer select-none">
+                        <input 
+                            type="checkbox" 
+                            checked={startOnView} 
+                            onChange={(e) => setStartOnView(e.target.checked)}
+                            className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1">
+                        Wait for Scroll <Eye className="w-3 h-3"/>
+                        </span>
+                    </label>
+                    
+                    {startOnView && (
+                        <label className="flex items-center gap-1 cursor-pointer select-none" title="Reset animation when scrolling away">
+                            <input 
+                                type="checkbox" 
+                                checked={replayOnScroll} 
+                                onChange={(e) => setReplayOnScroll(e.target.checked)}
+                                className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1">
+                            Replay <PlayCircle className="w-3 h-3"/>
+                            </span>
+                        </label>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-2">
